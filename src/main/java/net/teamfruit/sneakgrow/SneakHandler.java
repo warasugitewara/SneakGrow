@@ -20,6 +20,16 @@ public class SneakHandler implements Listener {
     private static final ItemStack boneMeal = new ItemStack(Material.BONE_MEAL);
     private static final Object nmsBoneMeal = ReflectionUtil.itemStackAsNmsCopy(boneMeal);
 
+    private static final Particle growParticle = tryEnumValue(Particle.class, "HAPPY_VILLAGER", "VILLAGER_HAPPY");
+
+    private static <T extends Enum<T>> T tryEnumValue(Class<T> enumClass, String name1, String name2) {
+        try {
+            return Enum.valueOf(enumClass, name1);
+        } catch (Exception e) {
+            return Enum.valueOf(enumClass, name2);
+        }
+    }
+
     private final Random rnd = new Random();
 
     public static class PlayerState {
@@ -90,13 +100,13 @@ public class SneakHandler implements Listener {
     private void sendPacketGrowBlock(Location location) {
         Collection<Player> players = location.getNearbyPlayers(48);
         for (Player player : players)
-            player.playEffect(location, Effect.VILLAGER_PLANT_GROW, Integer.valueOf(0));
+            player.spawnParticle(growParticle, location.toBlockLocation().toCenterLocation(), 5, .3, .3, .3);
     }
 
     private void sendPacketGrowEntity(Location location) {
         Collection<Player> players = location.getNearbyPlayers(48);
         for (Player player : players)
-            player.spawnParticle(Particle.VILLAGER_HAPPY, location, 5, .2, .2, .2);
+            player.spawnParticle(growParticle, location, 5, .2, .2, .2);
     }
 
     private List<Block> getAgeableBlockInRange(Location location, int radius) {
