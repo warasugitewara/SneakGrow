@@ -69,7 +69,11 @@ public class ReflectionUtil {
     }
 
     public static Class<?> getCraftBukkitClass(String name) throws ClassNotFoundException {
-        return Class.forName(CRAFTBUKKIT_NAMESPACE + "." + VERSION + "." + name);
+        try {
+            return Class.forName(CRAFTBUKKIT_NAMESPACE + "." + name);
+        } catch (ClassNotFoundException e) {
+            return Class.forName(CRAFTBUKKIT_NAMESPACE + "." + VERSION + "." + name);
+        }
     }
 
     public static Object itemStackAsNmsCopy(ItemStack itemStack) {
