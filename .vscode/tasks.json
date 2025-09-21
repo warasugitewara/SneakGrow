@@ -2,29 +2,49 @@
     "version": "2.0.0",
     "type": "shell",
     "options": {
-        "shell": {
-            "executable": "powershell.exe",
-            "args": ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+        "cwd": "${workspaceFolder}",
+    },
+    "windows": {
+        // Windows環境ではPowerShellを使用
+        "options": {
+            "shell": {
+                "executable": "powershell.exe",
+                "args": ["-NoLogo", "-ExecutionPolicy", "Bypass", "-Command"]
+            }
         }
     },
+    "problemMatcher": [],
     "tasks": [
         {
+            // プラグインをビルドするタスクです。
             "label": "Build Plugin",
-            "type": "shell",
-            "command": "powershell",
-            "args": [
-                "mvn package;",
-                "& '${workspaceFolder}\\.run\\build.ps1';"
-            ],
+            "command": "mvn package",
+            "group": "build"
+        },
+        {
+            // ビルドしたプラグインをデプロイするタスクです。
+            "label": "Deploy Plugin",
+            "command": ".vscode/copy_plugin.sh",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": []
+            "windows": {
+                // Windows環境ではGit Bashを使用してシェルスクリプトを実行
+                "options": {
+                    "shell": {
+                        "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
+                        "args": ["-c"]
+                    }
+                }
+            },
+            "dependsOn": [
+                "Build Plugin",
+            ]
         },
         {
+            // 開発サーバーを起動するタスクです。
             "label": "Start Server",
-            "type": "shell",
             "command": "java -Xmx1G -Xms1G -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar paper.jar --nogui",
             "options": {
                 "cwd": "${workspaceFolder}/run"
@@ -42,7 +62,7 @@
                 }
             },
             "dependsOn": [
-                "Build Plugin",
+                "Deploy Plugin",
             ]
         }
     ]
