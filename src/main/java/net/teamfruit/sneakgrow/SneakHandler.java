@@ -2,6 +2,7 @@ package net.teamfruit.sneakgrow;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Sapling;
 import org.bukkit.entity.Ageable;
@@ -9,16 +10,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class SneakHandler implements Listener {
     private final Map<String, PlayerState> states = new HashMap<>();
-
-    private static final ItemStack boneMeal = new ItemStack(Material.BONE_MEAL);
-    private static final Object nmsBoneMeal = ReflectionUtil.itemStackAsNmsCopy(boneMeal);
 
     private static final Particle growParticle = tryEnumValue(Particle.class, "HAPPY_VILLAGER", "VILLAGER_HAPPY");
 
@@ -51,8 +48,6 @@ public class SneakHandler implements Listener {
         if (ticksSinceLastCheck >= SneakGrow.cooldown) {
             state.ticksLastCheck = ticksNow;
 
-            World world = player.getWorld();
-            Object nmsWorld = ReflectionUtil.craftWorldGetHandle(world);
             Location location = player.getLocation();
 
             if (state.isSneaked) {
@@ -62,10 +57,9 @@ public class SneakHandler implements Listener {
 
                     ageables.forEach(block -> {
                         if (rnd.nextFloat() < SneakGrow.blockPercentage) {
-                            Object nmsBlockPosition = ReflectionUtil.constructBlockPosition(block.getX(), block.getY(), block.getZ());
-                            ReflectionUtil.applyBoneMeal(nmsBoneMeal, nmsWorld, nmsBlockPosition);
+                            boolean grown = block.applyBoneMeal(BlockFace.UP);
 
-                            if (SneakGrow.showParticles)
+                            if (grown && SneakGrow.showParticles)
                                 sendPacketGrowBlock(block.getLocation());
                         }
                     });
