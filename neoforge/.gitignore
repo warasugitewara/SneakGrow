@@ -1,0 +1,10 @@
+# ルートの .gitignore が *.jar を除外しているため、Gradle Wrapper だけ明示的に戻す
+!gradle/wrapper/gradle-wrapper.jar
+
+.gradle/
+build/
+run/
+runs/
+run-data/
+repo/
+src/generated/

@@ -1,0 +1,42 @@
+# Kotlin for Forge の言語ローダーを使用する (ATM10 に同梱済み)
+modLoader="kotlinforforge"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/warasugitewara/sneakgrow/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''
+しゃがむだけで、周囲の苗木・農作物・子供Mobの成長を早めます。
+
+ブロック・アイテム・エンティティ・カスタムパケットを一切登録しないため、
+サーバーにのみ導入すれば動作します。クライアント側への追加は不要です。
+
+設定は world/serverconfig/sneakgrow-server.toml、
+または OP 権限の /sneakgrow コマンドから変更できます。
+'''
+
+[[dependencies.${mod_id}]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="kotlinforforge"
+type="required"
+reason="Kotlin で実装されているため、Kotlin ランタイムを提供する Kotlin for Forge が必要です。"
+versionRange="${kff_version_range}"
+ordering="NONE"
+side="BOTH"
