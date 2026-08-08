@@ -15,8 +15,9 @@ description='''
 ブロック・アイテム・エンティティ・カスタムパケットを一切登録しないため、
 サーバーにのみ導入すれば動作します。クライアント側への追加は不要です。
 
-設定は world/serverconfig/sneakgrow-server.toml、
-または OP 権限の /sneakgrow コマンドから変更できます。
+設定は config/sneakgrow-server.toml (ワールド個別に上書きする場合は
+world/serverconfig/sneakgrow-server.toml)、または OP 権限の
+/sneakgrow コマンドから変更できます。
 '''
 
 [[dependencies.${mod_id}]]

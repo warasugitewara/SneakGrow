@@ -23,8 +23,9 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent
 /**
  * `/sneakgrow` コマンド。
  *
- * 変更は即座に `world/serverconfig/sneakgrow-server.toml` へ書き戻されるため、
- * サーバーを再起動しても設定が残る。
+ * 変更は即座に設定ファイル (`config/sneakgrow-server.toml`、ワールド個別に
+ * 上書きしている場合は `world/serverconfig/sneakgrow-server.toml`) へ
+ * 書き戻されるため、サーバーを再起動しても設定が残る。
  */
 object SneakGrowCommand {
     /** OP レベル 2 以上を要求する。 */

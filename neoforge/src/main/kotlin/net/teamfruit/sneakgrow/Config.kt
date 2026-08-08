@@ -88,7 +88,8 @@ class BooleanSetting(
 }
 
 /**
- * `world/serverconfig/sneakgrow-server.toml` に対応する設定。
+ * `config/sneakgrow-server.toml` に対応する SERVER 設定。
+ * ワールド個別に上書きする場合は `world/serverconfig/sneakgrow-server.toml` が使われる。
  *
  * 既定値は [Defaults] に集約し、スペック定義と [settings] の初期値で共有する。
  * 数値・真偽値の項目は [intSettings] / [doubleSettings] / [booleanSettings] にも
