@@ -7,21 +7,23 @@ plugins {
     kotlin("jvm") version "2.2.20"
 }
 
-val minecraftVersion: String by extra(property("minecraft_version") as String)
-val minecraftVersionRange: String by extra(property("minecraft_version_range") as String)
-val neoVersion: String by extra(property("neo_version") as String)
-val neoVersionRange: String by extra(property("neo_version_range") as String)
-val loaderVersionRange: String by extra(property("loader_version_range") as String)
-val kffVersion: String by extra(property("kff_version") as String)
-val kffVersionRange: String by extra(property("kff_version_range") as String)
-val parchmentMinecraftVersion: String by extra(property("parchment_minecraft_version") as String)
-val parchmentMappingsVersion: String by extra(property("parchment_mappings_version") as String)
-val modId: String by extra(property("mod_id") as String)
-val modName: String by extra(property("mod_name") as String)
-val modLicense: String by extra(property("mod_license") as String)
-val modVersion: String by extra(property("mod_version") as String)
-val modGroupId: String by extra(property("mod_group_id") as String)
-val modAuthors: String by extra(property("mod_authors") as String)
+fun prop(name: String) = property(name) as String
+
+val minecraftVersion = prop("minecraft_version")
+val minecraftVersionRange = prop("minecraft_version_range")
+val neoVersion = prop("neo_version")
+val neoVersionRange = prop("neo_version_range")
+val loaderVersionRange = prop("loader_version_range")
+val kffVersion = prop("kff_version")
+val kffVersionRange = prop("kff_version_range")
+val parchmentMinecraftVersion = prop("parchment_minecraft_version")
+val parchmentMappingsVersion = prop("parchment_mappings_version")
+val modId = prop("mod_id")
+val modName = prop("mod_name")
+val modLicense = prop("mod_license")
+val modVersion = prop("mod_version")
+val modGroupId = prop("mod_group_id")
+val modAuthors = prop("mod_authors")
 
 version = modVersion
 group = modGroupId
