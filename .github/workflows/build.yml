@@ -6,7 +6,8 @@ on:
   pull_request:
 
 jobs:
-  build:
+  paper:
+    name: Paper plugin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,3 +27,29 @@ jobs:
         with:
           name: SneakGrow
           path: target/sneakgrow-*.jar
+
+  neoforge:
+    name: NeoForge mod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # NeoForge 1.21.1 は Java 21 が必須 (Paper 版の 25 とは別)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        working-directory: neoforge
+        run: ./gradlew build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SneakGrow-NeoForge
+          path: neoforge/build/libs/sneakgrow-neoforge-*.jar
