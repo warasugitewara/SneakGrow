@@ -55,3 +55,32 @@ jobs:
             target/sneakgrow-*.jar
             neoforge/build/libs/sneakgrow-neoforge-*.jar
           generate_release_notes: true
+
+      # Modrinth 公開。Paper 版と NeoForge 版は対象 MC バージョンが異なるため
+      # 別ステップに分ける。github-token を渡していないのは、前段の
+      # action-gh-release と二重に GitHub Release を作らせないため。
+      - name: Publish Paper plugin to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3.1
+        with:
+          modrinth-id: sneakgr0w
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: target/sneakgrow-*.jar
+          name: SneakGrow ${{ github.event.inputs.tag || github.ref_name }} (Paper)
+          version: ${{ github.event.inputs.tag || github.ref_name }}+paper
+          version-type: release
+          loaders: paper
+          game-versions: "26.1.2"
+          java: 25
+
+      - name: Publish NeoForge mod to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3.1
+        with:
+          modrinth-id: sneakgr0w
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: neoforge/build/libs/sneakgrow-neoforge-*.jar
+          name: SneakGrow ${{ github.event.inputs.tag || github.ref_name }} (NeoForge)
+          version: ${{ github.event.inputs.tag || github.ref_name }}+neoforge
+          version-type: release
+          loaders: neoforge
+          game-versions: "1.21.1"
+          java: 21
