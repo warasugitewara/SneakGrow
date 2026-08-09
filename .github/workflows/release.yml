@@ -3,7 +3,10 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      # v1.7 のような 2 桁表記も拾えるようにする。
+      # 以前は "v*.*.*" だったが、このリポジトリのタグは vX.Y 形式のため
+      # 一度も一致せず、リリースは常に workflow_dispatch 頼みになっていた。
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
