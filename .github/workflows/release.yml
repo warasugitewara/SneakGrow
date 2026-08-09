@@ -85,4 +85,5 @@ jobs:
           loaders: neoforge
           game-versions: "1.21.1"
           environment: server
+          dependencies: kotlinforforge(required){modrinth:kotlin-for-forge}
           java: 21
