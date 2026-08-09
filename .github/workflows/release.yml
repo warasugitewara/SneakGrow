@@ -70,6 +70,7 @@ jobs:
           version-type: release
           loaders: paper
           game-versions: "26.1.2"
+          environment: server
           java: 25
 
       - name: Publish NeoForge mod to Modrinth
@@ -83,4 +84,6 @@ jobs:
           version-type: release
           loaders: neoforge
           game-versions: "1.21.1"
+          environment: server
+          dependencies: kotlinforforge(required){modrinth:kotlin-for-forge}
           java: 21
