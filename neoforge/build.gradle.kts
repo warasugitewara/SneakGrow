@@ -27,7 +27,10 @@ val modAuthors = prop("mod_authors")
 
 version = modVersion
 group = modGroupId
-base.archivesName = modId
+// Paper 版の成果物 (target/sneakgrow-<version>.jar) とファイル名が衝突しないよう、
+// リリースへ添付する際に区別できる名前にする。MOD の識別は neoforge.mods.toml で
+// 行われるため、ファイル名を変えても読み込みには影響しない。
+base.archivesName = "$modId-neoforge"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
