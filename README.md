@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/icon.png" alt="SneakGrow" width="180">
+
 # 🌱 SneakGrow
 
 **しゃがむだけで、苗木・農作物・子供Mobの成長を早める Paper プラグイン / NeoForge MOD**
