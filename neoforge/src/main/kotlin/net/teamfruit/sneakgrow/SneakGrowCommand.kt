@@ -51,6 +51,7 @@ object SneakGrowCommand {
             )
             .then(setNode())
             .then(filterNode())
+            .then(forceNode())
 
     // ------------------------------------------------------------------ set
 
@@ -98,41 +99,52 @@ object SneakGrowCommand {
         return 1
     }
 
-    // --------------------------------------------------------------- filter
+    // -------------------------------------------------------- filter / force
 
-    private fun filterNode(): LiteralArgumentBuilder<CommandSourceStack> {
-        val filter = Commands.literal("filter")
-            .executes { ctx -> showFilter(ctx.source) }
-            .then(Commands.literal("list").executes { ctx -> showFilter(ctx.source) })
-            .then(modeNode())
+    /** ブロックID・名前空間の一覧を編集する共通ノード。`filter` と `force` で共有する。 */
+    private fun listNode(
+        literal: String,
+        blocks: ModConfigSpec.ConfigValue<MutableList<out String>>,
+        namespaces: ModConfigSpec.ConfigValue<MutableList<out String>>,
+        displayName: String,
+        show: (CommandSourceStack) -> Int,
+    ): LiteralArgumentBuilder<CommandSourceStack> =
+        Commands.literal(literal)
+            .executes { ctx -> show(ctx.source) }
+            .then(Commands.literal("list").executes { ctx -> show(ctx.source) })
             .then(
                 Commands.literal("add").then(
                     blockArgument().executes { ctx ->
-                        editList(ctx.source, Config.filterBlocks, blockId(ctx), true, "ブロック")
+                        editList(ctx.source, blocks, blockId(ctx), true, "ブロック")
                     }
                 )
             )
             .then(
                 Commands.literal("remove").then(
                     blockArgument().executes { ctx ->
-                        editList(ctx.source, Config.filterBlocks, blockId(ctx), false, "ブロック")
+                        editList(ctx.source, blocks, blockId(ctx), false, "ブロック")
                     }
                 )
             )
-            .then(Commands.literal("addlook").executes { ctx -> addLookedAtBlock(ctx.source) })
-            .then(namespaceNode("addmod", true))
-            .then(namespaceNode("removemod", false))
+            .then(Commands.literal("addlook").executes { ctx -> addLookedAtBlock(ctx.source, blocks) })
+            .then(namespaceNode("addmod", namespaces, true))
+            .then(namespaceNode("removemod", namespaces, false))
             .then(
                 Commands.literal("clear").executes { ctx ->
-                    Config.filterBlocks.set(mutableListOf())
-                    Config.filterNamespaces.set(mutableListOf())
+                    blocks.set(mutableListOf())
+                    namespaces.set(mutableListOf())
                     Config.save()
-                    ctx.source.sendSuccess({ label("フィルタを空にしました") }, true)
+                    ctx.source.sendSuccess({ label("${displayName}を空にしました") }, true)
                     1
                 }
             )
-        return filter
-    }
+
+    private fun filterNode(): LiteralArgumentBuilder<CommandSourceStack> =
+        listNode("filter", Config.filterBlocks, Config.filterNamespaces, "フィルタ", ::showFilter)
+            .then(modeNode())
+
+    private fun forceNode(): LiteralArgumentBuilder<CommandSourceStack> =
+        listNode("force", Config.forceBlocks, Config.forceNamespaces, "強制成長リスト", ::showForce)
 
     private fun modeNode(): LiteralArgumentBuilder<CommandSourceStack> {
         val mode = Commands.literal("mode")
@@ -162,7 +174,11 @@ object SneakGrowCommand {
     private fun blockId(ctx: CommandContext<CommandSourceStack>): String =
         ResourceLocationArgument.getId(ctx, "block").toString()
 
-    private fun namespaceNode(literal: String, add: Boolean): LiteralArgumentBuilder<CommandSourceStack> =
+    private fun namespaceNode(
+        literal: String,
+        namespaces: ModConfigSpec.ConfigValue<MutableList<out String>>,
+        add: Boolean,
+    ): LiteralArgumentBuilder<CommandSourceStack> =
         Commands.literal(literal).then(
             Commands.argument("namespace", StringArgumentType.word())
                 .suggests { _, builder ->
@@ -174,7 +190,7 @@ object SneakGrowCommand {
                 .executes { ctx ->
                     editList(
                         ctx.source,
-                        Config.filterNamespaces,
+                        namespaces,
                         StringArgumentType.getString(ctx, "namespace"),
                         add,
                         "名前空間",
@@ -182,7 +198,10 @@ object SneakGrowCommand {
                 }
         )
 
-    private fun addLookedAtBlock(source: CommandSourceStack): Int {
+    private fun addLookedAtBlock(
+        source: CommandSourceStack,
+        blocks: ModConfigSpec.ConfigValue<MutableList<out String>>,
+    ): Int {
         val player = source.playerOrException
         val hit = player.pick(LOOK_DISTANCE, 0.0f, false)
         if (hit.type != HitResult.Type.BLOCK) {
@@ -194,7 +213,7 @@ object SneakGrowCommand {
         val block = player.level().getBlockState(pos).block
         // BLOCK は DefaultedRegistry なので、未登録でも既定キーが返り null にはならない
         val id = BuiltInRegistries.BLOCK.getKey(block)
-        return editList(source, Config.filterBlocks, id.toString(), true, "ブロック")
+        return editList(source, blocks, id.toString(), true, "ブロック")
     }
 
     private fun editList(
@@ -236,7 +255,17 @@ object SneakGrowCommand {
         for (setting in Config.allSettings) {
             source.sendSuccess({ entry(setting.key, setting.get().toString()) }, false)
         }
-        return showFilter(source)
+        source.sendSuccess(
+            {
+                entry(
+                    "botanypots (連携状態)",
+                    if (BotanyPotsIntegration.isAvailable) "利用可能" else "利用不可 (MOD未導入またはAPI不一致)",
+                )
+            },
+            false,
+        )
+        showFilter(source)
+        return showForce(source)
     }
 
     private fun showFilter(source: CommandSourceStack): Int {
@@ -245,6 +274,14 @@ object SneakGrowCommand {
         source.sendSuccess({ entry("mode", settings.filterMode.name) }, false)
         source.sendSuccess({ entry("blocks", joinOrEmpty(settings.filterBlocks.map(ResourceLocation::toString))) }, false)
         source.sendSuccess({ entry("namespaces", joinOrEmpty(settings.filterNamespaces)) }, false)
+        return 1
+    }
+
+    private fun showForce(source: CommandSourceStack): Int {
+        val settings = Config.settings
+        source.sendSuccess({ header("SneakGrow (force: 骨粉の成功判定を無視する対象)") }, false)
+        source.sendSuccess({ entry("blocks", joinOrEmpty(settings.forceBlocks.map(ResourceLocation::toString))) }, false)
+        source.sendSuccess({ entry("namespaces", joinOrEmpty(settings.forceNamespaces)) }, false)
         return 1
     }
 
