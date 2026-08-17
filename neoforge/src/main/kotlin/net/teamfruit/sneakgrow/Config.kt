@@ -40,6 +40,12 @@ data class Settings(
     val filterMode: FilterMode,
     val filterBlocks: Set<ResourceLocation>,
     val filterNamespaces: Set<String>,
+    val forceBlocks: Set<ResourceLocation>,
+    val forceNamespaces: Set<String>,
+    val botanyPotsEnabled: Boolean,
+    val botanyPotsMinGrowthTicks: Int,
+    val botanyPotsMaxGrowthTicks: Int,
+    val botanyPotsCooldownTicks: Int,
 ) {
     /** [id] のブロックがフィルタを通過するか。 */
     fun isAllowed(id: ResourceLocation): Boolean {
@@ -49,6 +55,16 @@ data class Settings(
             FilterMode.WHITELIST -> listed
         }
     }
+
+    /**
+     * [id] のブロックで `BonemealableBlock#isBonemealSuccess` の判定を飛ばすか。
+     *
+     * Mystical Agriculture の作物のように、MOD 側が骨粉を意図的に無効化
+     * (`isBonemealSuccess` が常に false) しているブロックを成長させるための逃げ道。
+     * `isValidBonemealTarget` は飛ばさないため、MOD 独自の成長条件は守られる。
+     */
+    fun isForced(id: ResourceLocation): Boolean =
+        id in forceBlocks || id.namespace in forceNamespaces
 }
 
 /** `/sneakgrow set` から扱える設定項目。定義と同時に登録され、コマンド側で列挙される。 */
@@ -115,6 +131,20 @@ object Config {
         val FILTER_MODE = FilterMode.BLACKLIST
         val FILTER_BLOCKS = emptyList<String>()
         val FILTER_NAMESPACES = emptyList<String>()
+        val FORCE_BLOCKS = emptyList<String>()
+
+        /**
+         * Mystical Agriculture は `MysticalCropBlock#isBonemealSuccess` が常に false を返し、
+         * 骨粉での成長を意図的に無効化している。既定でここに入れておく。
+         */
+        val FORCE_NAMESPACES = listOf("mysticalagriculture")
+
+        const val BOTANY_POTS_ENABLED = true
+
+        // 本家 botanypots の data/botanypots/recipe/minecraft/fertilizer/bone_meal.json と同値
+        const val BOTANY_POTS_MIN_GROWTH_TICKS = 400
+        const val BOTANY_POTS_MAX_GROWTH_TICKS = 600
+        const val BOTANY_POTS_COOLDOWN_TICKS = 20
     }
 
     private val cooldownTicks: ModConfigSpec.IntValue
@@ -133,9 +163,17 @@ object Config {
     private val fireBonemealEvent: ModConfigSpec.BooleanValue
     private val requireGrowerType: ModConfigSpec.BooleanValue
 
+    private val botanyPotsEnabled: ModConfigSpec.BooleanValue
+    private val botanyPotsMinGrowthTicks: ModConfigSpec.IntValue
+    private val botanyPotsMaxGrowthTicks: ModConfigSpec.IntValue
+    private val botanyPotsCooldownTicks: ModConfigSpec.IntValue
+
     val filterMode: ModConfigSpec.EnumValue<FilterMode>
     val filterBlocks: ModConfigSpec.ConfigValue<MutableList<out String>>
     val filterNamespaces: ModConfigSpec.ConfigValue<MutableList<out String>>
+
+    val forceBlocks: ModConfigSpec.ConfigValue<MutableList<out String>>
+    val forceNamespaces: ModConfigSpec.ConfigValue<MutableList<out String>>
 
     val intSettings: List<IntSetting>
     val doubleSettings: List<DoubleSetting>
@@ -167,6 +205,12 @@ object Config {
         filterMode = Defaults.FILTER_MODE,
         filterBlocks = emptySet(),
         filterNamespaces = emptySet(),
+        forceBlocks = emptySet(),
+        forceNamespaces = Defaults.FORCE_NAMESPACES.toSet(),
+        botanyPotsEnabled = Defaults.BOTANY_POTS_ENABLED,
+        botanyPotsMinGrowthTicks = Defaults.BOTANY_POTS_MIN_GROWTH_TICKS,
+        botanyPotsMaxGrowthTicks = Defaults.BOTANY_POTS_MAX_GROWTH_TICKS,
+        botanyPotsCooldownTicks = Defaults.BOTANY_POTS_COOLDOWN_TICKS,
     )
         private set
 
@@ -177,9 +221,13 @@ object Config {
         val booleans = mutableListOf<BooleanSetting>()
         val all = mutableListOf<Setting<*>>()
 
+        // TOML のキーはセクション内で短く保ちつつ、/sneakgrow set 側では
+        // セクションをまたいで一意になるよう接頭辞を付ける。
+        var keyPrefix = ""
+
         fun int(key: String, default: Int, min: Int, max: Int, vararg comment: String): ModConfigSpec.IntValue {
             val value = builder.comment(*comment).defineInRange(key, default, min, max)
-            IntSetting(key, value, min, max).also { ints += it; all += it }
+            IntSetting(keyPrefix + key, value, min, max).also { ints += it; all += it }
             return value
         }
 
@@ -191,13 +239,13 @@ object Config {
             vararg comment: String,
         ): ModConfigSpec.DoubleValue {
             val value = builder.comment(*comment).defineInRange(key, default, min, max)
-            DoubleSetting(key, value, min, max).also { doubles += it; all += it }
+            DoubleSetting(keyPrefix + key, value, min, max).also { doubles += it; all += it }
             return value
         }
 
         fun boolean(key: String, default: Boolean, vararg comment: String): ModConfigSpec.BooleanValue {
             val value = builder.comment(*comment).define(key, default)
-            BooleanSetting(key, value).also { booleans += it; all += it }
+            BooleanSetting(keyPrefix + key, value).also { booleans += it; all += it }
             return value
         }
 
@@ -297,6 +345,67 @@ object Config {
 
         builder.pop()
 
+        builder
+            .comment(
+                "骨粉の成功判定 (BonemealableBlock#isBonemealSuccess) を無視するブロック",
+                "MOD 側が骨粉を意図的に無効化している作物を成長させるための設定",
+                "isValidBonemealTarget は無視しないため、MOD 独自の成長条件は守られる",
+                "(/sneakgrow force で編集可能)",
+            )
+            .push("force")
+
+        forceBlocks = builder
+            .comment("対象のブロックID (例: \"mysticalagriculture:inferium_crop\")")
+            .defineListAllowEmpty(
+                "blocks",
+                Defaults.FORCE_BLOCKS,
+                Supplier { "mysticalagriculture:inferium_crop" },
+                Predicate { it is String && ResourceLocation.tryParse(it) != null },
+            )
+        forceNamespaces = builder
+            .comment(
+                "MOD単位で指定する名前空間",
+                "Mystical Agriculture の作物は骨粉が効かない実装のため既定で含めている",
+            )
+            .defineListAllowEmpty(
+                "namespaces",
+                Defaults.FORCE_NAMESPACES,
+                Supplier { "mysticalagriculture" },
+                Predicate { it is String && it.isNotEmpty() },
+            )
+
+        builder.pop()
+
+        builder
+            .comment(
+                "Botany Pots 連携",
+                "Botany Pots のポットは BonemealableBlock ではなく BlockEntity 側で成長を管理するため、",
+                "専用の処理で成長させる。Botany Pots が導入されていない場合は何もしない。",
+            )
+            .push("botanypots")
+        keyPrefix = "botanypots."
+
+        botanyPotsEnabled = boolean(
+            "enabled", Defaults.BOTANY_POTS_ENABLED,
+            "Botany Pots のポットを成長対象にするか (tweaks.growCrops も true である必要がある)",
+        )
+        botanyPotsMinGrowthTicks = int(
+            "minGrowthTicks", Defaults.BOTANY_POTS_MIN_GROWTH_TICKS, 1, 24000,
+            "1回で進める成長量の下限 (tick)。本家の骨粉レシピは 400",
+        )
+        botanyPotsMaxGrowthTicks = int(
+            "maxGrowthTicks", Defaults.BOTANY_POTS_MAX_GROWTH_TICKS, 1, 24000,
+            "1回で進める成長量の上限 (tick)。本家の骨粉レシピは 600",
+            "minGrowthTicks より小さい場合は minGrowthTicks が使われる",
+        )
+        botanyPotsCooldownTicks = int(
+            "cooldownTicks", Defaults.BOTANY_POTS_COOLDOWN_TICKS, 0, 24000,
+            "成長後に設定するポット側のクールダウン (tick)。本家の骨粉レシピは 20",
+        )
+
+        keyPrefix = ""
+        builder.pop()
+
         SPEC = builder.build()
         intSettings = ints
         doubleSettings = doubles
@@ -326,6 +435,12 @@ object Config {
             filterMode = filterMode.get(),
             filterBlocks = filterBlocks.get().mapNotNullTo(LinkedHashSet()) { ResourceLocation.tryParse(it) },
             filterNamespaces = filterNamespaces.get().toCollection(LinkedHashSet()),
+            forceBlocks = forceBlocks.get().mapNotNullTo(LinkedHashSet()) { ResourceLocation.tryParse(it) },
+            forceNamespaces = forceNamespaces.get().toCollection(LinkedHashSet()),
+            botanyPotsEnabled = botanyPotsEnabled.get(),
+            botanyPotsMinGrowthTicks = botanyPotsMinGrowthTicks.get(),
+            botanyPotsMaxGrowthTicks = botanyPotsMaxGrowthTicks.get(),
+            botanyPotsCooldownTicks = botanyPotsCooldownTicks.get(),
         )
     }
 
