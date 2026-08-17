@@ -153,6 +153,29 @@ mvn package
 | `blocks` | `[]` | 対象のブロックID (例: `"minecraft:wheat"`) |
 | `namespaces` | `[]` | MOD単位で指定する名前空間 (例: `"mysticalagriculture"`) |
 
+#### `[force]`
+
+骨粉の成功判定 (`BonemealableBlock#isBonemealSuccess`) を無視する対象。MOD 側が骨粉を意図的に無効化している作物を成長させるための設定です。
+
+| 設定項目 | デフォルト値 | 説明 |
+|---|---|---|
+| `blocks` | `[]` | 対象のブロックID |
+| `namespaces` | `["mysticalagriculture"]` | MOD単位で指定する名前空間 |
+
+> [!NOTE]
+> `isValidBonemealTarget` は無視しないため、**MOD 独自の成長条件は守られます**。Mystical Agriculture であれば Crux ブロック・農地ティア・必要バイオームの判定はそのまま働きます。
+
+#### `[botanypots]`
+
+| 設定項目 | デフォルト値 | 説明 |
+|---|---|---|
+| `enabled` | `true` | Botany Pots のポットを成長対象にするか (`growCrops` も `true` である必要があります) |
+| `minGrowthTicks` | `400` | 1回で進める成長量の下限 (tick) |
+| `maxGrowthTicks` | `600` | 1回で進める成長量の上限 (tick) |
+| `cooldownTicks` | `20` | 成長後にポット側へ設定するクールダウン (tick) |
+
+デフォルト値は Botany Pots 本体の骨粉レシピ (`min_growth:400` / `max_growth:600` / `cooldown:20`) と同じです。本家と同様、**収穫までの最後の 20 tick は埋められない**ため、この機能だけでポットを収穫状態にすることはできません。
+
 ### ⌨️ コマンド
 
 すべて OP レベル 2 以上が必要です。変更は即座に設定ファイルへ書き戻されます。
@@ -171,8 +194,24 @@ mvn package
 | `/sneakgrow filter addmod <namespace>` | MOD単位で一覧に追加 |
 | `/sneakgrow filter removemod <namespace>` | MOD単位で一覧から削除 |
 | `/sneakgrow filter clear` | フィルタを空にする |
+| `/sneakgrow force` / `force list` | `[force]` の内容を表示 |
+| `/sneakgrow force add\|remove <blockId>` | `[force]` にブロックIDを追加/削除 |
+| `/sneakgrow force addlook` | 視線先のブロックを `[force]` に追加 |
+| `/sneakgrow force addmod\|removemod <namespace>` | `[force]` にMOD単位で追加/削除 |
+| `/sneakgrow force clear` | `[force]` を空にする |
 
-未導入MODのブロックIDも登録できるよう、`filter add` はレジストリ上の存在を検証しません。
+未導入MODのブロックIDも登録できるよう、`add` はレジストリ上の存在を検証しません。
+
+## 🧪 MOD 対応状況 (NeoForge 版)
+
+| MOD | 状態 | 備考 |
+|---|---|---|
+| バニラの苗木・農作物 | ✅ | |
+| 骨粉が効く modded 作物全般 | ✅ | `BonemealableBlock` を実装していれば自動対応 |
+| **Mystical Agriculture** | ✅ | `MysticalCropBlock` は骨粉を意図的に無効化 (`isBonemealSuccess` が常に `false`) しているため、`[force]` に既定で登録して成功判定のみ回避します |
+| **Botany Pots** | ✅ | ポットは `BonemealableBlock` ではなく BlockEntity 側で成長を管理するため、専用処理で対応します |
+
+Botany Pots 連携はビルド時依存を持たず、サーバー起動時に API の有無を確認します。未導入の場合や API が想定と異なる場合はログに記録して連携のみ無効化し、他の成長処理には影響しません。連携状態は `/sneakgrow` の出力で確認できます。
 
 ### 🔄 Paper 版との違い
 
