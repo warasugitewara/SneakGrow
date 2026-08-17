@@ -118,7 +118,14 @@ object SneakHandler {
         settings: Settings,
     ): Boolean {
         val block = blockState.block
-        val bonemealable = block as? BonemealableBlock ?: return false
+
+        // BLOCK は DefaultedRegistry なので、未登録でも既定キーが返り null にはならない
+        val id = BuiltInRegistries.BLOCK.getKey(block)
+        if (!settings.isAllowed(id)) return false
+
+        val bonemealable = block as? BonemealableBlock
+            // Botany Pots のように BonemealableBlock を実装しない栽培ブロックの受け皿
+            ?: return tryGrowBotanyPot(player, level, pos, blockState, settings)
 
         val isSapling = block is SaplingBlock
         if (isSapling && !settings.growSaplings) return false
@@ -126,9 +133,6 @@ object SneakHandler {
 
         // 草ブロックのように「周囲に生やす」タイプを除外する
         if (settings.requireGrowerType && bonemealable.type != BonemealableBlock.Type.GROWER) return false
-
-        // BLOCK は DefaultedRegistry なので、未登録でも既定キーが返り null にはならない
-        if (!settings.isAllowed(BuiltInRegistries.BLOCK.getKey(block))) return false
 
         if (settings.fireBonemealEvent) {
             val event = BonemealEvent(player, level, pos, blockState, ItemStack.EMPTY)
@@ -138,23 +142,57 @@ object SneakHandler {
 
         // Paper 版の Block#applyBoneMeal と同じ手順
         if (!bonemealable.isValidBonemealTarget(level, pos, blockState)) return false
-        if (!bonemealable.isBonemealSuccess(level, level.random, pos, blockState)) return false
+        // Mystical Agriculture の作物のように isBonemealSuccess が常に false のブロックは、
+        // force 設定に載っている場合のみ成功判定を飛ばす。
+        // isValidBonemealTarget は飛ばさないので、MOD 独自の成長条件は守られる。
+        if (!settings.isForced(id) &&
+            !bonemealable.isBonemealSuccess(level, level.random, pos, blockState)
+        ) {
+            return false
+        }
         bonemealable.performBonemeal(level, level.random, pos, blockState)
 
-        if (settings.showParticles) {
-            level.sendParticles(
-                ParticleTypes.HAPPY_VILLAGER,
-                pos.x + 0.5,
-                pos.y + 0.5,
-                pos.z + 0.5,
-                5,
-                0.3,
-                0.3,
-                0.3,
-                0.0,
-            )
-        }
+        spawnGrowParticles(level, pos, settings)
         return true
+    }
+
+    /** @return Botany Pots のポットを成長させた場合のみ true */
+    private fun tryGrowBotanyPot(
+        player: ServerPlayer,
+        level: ServerLevel,
+        pos: BlockPos,
+        blockState: BlockState,
+        settings: Settings,
+    ): Boolean {
+        if (!settings.growCrops || !settings.botanyPotsEnabled) return false
+        if (!BotanyPotsIntegration.isAvailable) return false
+
+        // 骨粉が効くブロックとして扱うため、保護MOD等に拒否の機会を与える点は同じにする
+        if (settings.fireBonemealEvent) {
+            val event = BonemealEvent(player, level, pos, blockState, ItemStack.EMPTY)
+            NeoForge.EVENT_BUS.post(event)
+            if (event.isCanceled) return event.isSuccessful
+        }
+
+        if (!BotanyPotsIntegration.tryGrow(level, pos, settings)) return false
+
+        spawnGrowParticles(level, pos, settings)
+        return true
+    }
+
+    private fun spawnGrowParticles(level: ServerLevel, pos: BlockPos, settings: Settings) {
+        if (!settings.showParticles) return
+        level.sendParticles(
+            ParticleTypes.HAPPY_VILLAGER,
+            pos.x + 0.5,
+            pos.y + 0.5,
+            pos.z + 0.5,
+            5,
+            0.3,
+            0.3,
+            0.3,
+            0.0,
+        )
     }
 
     private fun growMobs(player: ServerPlayer, level: ServerLevel, settings: Settings) {
